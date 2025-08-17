@@ -31,13 +31,8 @@ struct ig_metadata_t {
     bit<8> pass_count;
 }
 
-struct eg_metadata_t {}
-
-// Simple digest to send to control plane
-struct flow_digest_t {
-    bit<32> src_ip;
-    bit<32> dst_ip;
-    bit<8>  pass_count;
+struct eg_metadata_t {
+    bit<8> dummy;
 }
 
 parser IngressParser(
@@ -85,18 +80,9 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t ig_tm_md) {
 
-    Digest<flow_digest_t>() digest;
-
     action recirculate() {
         // Send to recirculation port 68
         ig_tm_md.ucast_egress_port = 68;
-        
-        // Send digest to control plane
-        digest.pack({
-            hdr.ipv4.src_addr,
-            hdr.ipv4.dst_addr,
-            ig_md.pass_count
-        });
     }
     
     action forward(bit<9> port) {
@@ -148,6 +134,7 @@ parser EgressParser(
     
     state start {
         pkt.extract(eg_intr_md);
+        eg_md.dummy = 0;
         transition parse_ethernet;
     }
     
@@ -174,7 +161,7 @@ control Egress(
     inout egress_intrinsic_metadata_for_output_port_t eg_oport_md) {
     
     apply {
-        // Nothing special needed in egress for basic recirculation
+        // Basic egress - no digest for now
     }
 }
 
